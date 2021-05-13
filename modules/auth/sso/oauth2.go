@@ -13,6 +13,7 @@ import (
 	"code.gitea.io/gitea/models"
 	"code.gitea.io/gitea/modules/log"
 	"code.gitea.io/gitea/modules/timeutil"
+	"code.gitea.io/gitea/modules/web/middleware"
 )
 
 // Ensure the struct implements the interface.
@@ -62,6 +63,8 @@ func (o *OAuth2) Free() error {
 
 // userIDFromToken returns the user id corresponding to the OAuth token.
 func (o *OAuth2) userIDFromToken(req *http.Request, store DataStore) int64 {
+	_ = req.ParseForm()
+
 	// Check access token.
 	tokenSHA := req.Form.Get("token")
 	if len(tokenSHA) == 0 {
@@ -119,7 +122,7 @@ func (o *OAuth2) VerifyAuthData(req *http.Request, w http.ResponseWriter, store 
 		return nil
 	}
 
-	if isInternalPath(req) || !isAPIPath(req) && !isAttachmentDownload(req) {
+	if middleware.IsInternalPath(req) || !middleware.IsAPIPath(req) && !isAttachmentDownload(req) {
 		return nil
 	}
 
@@ -127,6 +130,7 @@ func (o *OAuth2) VerifyAuthData(req *http.Request, w http.ResponseWriter, store 
 	if id <= 0 {
 		return nil
 	}
+	log.Trace("OAuth2 Authorization: Found token for user[%d]", id)
 
 	user, err := models.GetUserByID(id)
 	if err != nil {
@@ -136,5 +140,6 @@ func (o *OAuth2) VerifyAuthData(req *http.Request, w http.ResponseWriter, store 
 		return nil
 	}
 
+	log.Trace("OAuth2 Authorization: Logged in user %-v", user)
 	return user
 }
